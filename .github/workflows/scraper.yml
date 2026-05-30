@@ -3,7 +3,6 @@ name: Auto Scraper
 on:
 
   schedule:
-
     - cron: "*/30 * * * *"
 
   workflow_dispatch:
@@ -21,7 +20,6 @@ jobs:
       - uses: actions/setup-node@v4
 
         with:
-
           node-version: 20
 
       - run: npm install
@@ -30,8 +28,8 @@ jobs:
 
         env:
 
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
 
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
 
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK }}
