@@ -1,125 +1,61 @@
-import "dotenv/config"
+const { chromium } = require("playwright")
+require("dotenv").config()
 
-import { createClient } from "@supabase/supabase-js"
-import { chromium } from "playwright"
-import WebSocket from "ws"
+const { createClient } = require("@supabase/supabase-js")
 
-const supabase = createClient(
+const supabaseUrl =
+  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
 
-process.env.NEXT_PUBLIC_SUPABASE_URL,
+const supabaseKey =
+  process.env.SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+const supabase = createClient(supabaseUrl, supabaseKey)
 
-{
- realtime:{
- transport: WebSocket
- }
-}
+async function run() {
+  const browser = await chromium.launch({ headless: true })
+  const page = await browser.newPage()
 
-)
+  await page.goto("https://books.toscrape.com")
 
-async function run(){
+  const products = await page.locator(".product_pod").all()
 
-const browser = await chromium.launch({
+  for (const item of products) {
+    const product = await item.locator("h3 a").getAttribute("title")
+    const priceText = await item.locator(".price_color").textContent()
+    const price = Number(priceText.replace("£", ""))
 
-headless:true
+    const existing = await supabase
+      .from("Deals")
+      .select("id")
+      .eq("Name", product)
+      .limit(1)
 
-})
+    if (existing.data && existing.data.length > 0) {
+      console.log("Skipping duplicate:", product)
+      continue
+    }
 
-const page = await browser.newPage()
+    const randomId = Date.now() + Math.floor(Math.random() * 100000)
 
-await page.goto(
+    const { error } = await supabase.from("Deals").insert({
+      id: randomId,
+      Name: product,
+      Store: "BooksToScrape",
+      Location: "Website",
+      ZipCode: "00000",
+      Old_Price: 100,
+      New_Price: price,
+    })
 
-"https://books.toscrape.com"
+    if (error) {
+      console.log("Save error:", error)
+      continue
+    }
 
-)
+    console.log("Saved:", product)
+  }
 
-const products = await page
-
-.locator(".product_pod")
-
-.all()
-
-for(const item of products){
-
-const product = await item
-
-.locator("h3 a")
-
-.getAttribute("title")
-
-const priceText = await item
-
-.locator(".price_color")
-
-.first()
-
-.textContent()
-
-const price = Number(
-
-priceText.replace("£","")
-
-)
-
-const { error } = await supabase
-
-.from("Deals")
-
-.insert({
-
-Name:product,
-
-Store:"BooksToScrape",
-
-Location:"Website",
-
-ZipCode:"00000",
-
-Old_Price:100,
-
-New_Price:price
-
-})
-
-if(!error){
-
-await fetch(
-
-process.env.DISCORD_WEBHOOK_URL,
-
-{
-
-method:"POST",
-
-headers:{
-
-"Content-Type":"application/json"
-
-},
-
-body:JSON.stringify({
-
-content:
-
-`🔥 NEW DEAL FOUND:
-
-${product}
-
-Price: £${price}`
-
-})
-
-}
-
-)
-
-}
-
-}
-
-await browser.close()
-
+  await browser.close()
 }
 
 run()
