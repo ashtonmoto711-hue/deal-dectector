@@ -1,6 +1,6 @@
 const { chromium } = require("playwright")
 
-require("dotenv").config({ path: ".env.local" })
+require("dotenv").config()
 
 const { createClient } =
 require("@supabase/supabase-js")
