@@ -1,92 +1,125 @@
-const { chromium } = require("playwright")
+import "dotenv/config"
 
-require("dotenv").config()
-
-const { createClient } = require("@supabase/supabase-js")
+import { createClient } from "@supabase/supabase-js"
+import { chromium } from "playwright"
+import WebSocket from "ws"
 
 const supabase = createClient(
-  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
 
-async function sendDiscordAlert(product, price) {
-  if (!process.env.DISCORD_WEBHOOK_URL) {
-    console.log("No Discord webhook found")
-    return
-  }
+process.env.NEXT_PUBLIC_SUPABASE_URL,
 
-  await fetch(process.env.DISCORD_WEBHOOK_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      content: `🔥 NEW DEAL FOUND:\n${product}\nPrice: £${price}`,
-    }),
-  })
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+
+{
+ realtime:{
+ transport: WebSocket
+ }
 }
 
-async function run() {
-  const browser = await chromium.launch({
-    headless: true,
-  })
+)
 
-  const page = await browser.newPage()
+async function run(){
 
-  for (let pageNumber = 1; pageNumber <= 5; pageNumber++) {
-    const url =
-      pageNumber === 1
-        ? "https://books.toscrape.com"
-        : `https://books.toscrape.com/catalogue/page-${pageNumber}.html`
+const browser = await chromium.launch({
 
-    console.log("VISITING:", url)
+headless:true
 
-    await page.goto(url)
+})
 
-    const products = await page.locator(".product_pod").all()
+const page = await browser.newPage()
 
-    for (const item of products) {
-      const product = await item.locator("h3 a").getAttribute("title")
+await page.goto(
 
-      const priceText = await item.locator(".price_color").textContent()
+"https://books.toscrape.com"
 
-      const price = Number(priceText.replace("£", ""))
+)
 
-      const existing = await supabase
-        .from("Deals")
-        .select("id")
-        .eq("Name", product)
-        .limit(1)
+const products = await page
 
-      if (existing.data && existing.data.length > 0) {
-        console.log("Skipping duplicate:", product)
-        continue
-      }
+.locator(".product_pod")
 
-      const randomId = Date.now() + Math.floor(Math.random() * 100000)
+.all()
 
-      const { error } = await supabase.from("Deals").insert({
-        id: randomId,
-        Name: product,
-        Store: "BooksToScrape",
-        Location: "Website",
-        ZipCode: "00000",
-        Old_Price: 100,
-        New_Price: price,
-      })
+for(const item of products){
 
-      if (error) {
-        console.log("Save error:", error)
-        continue
-      }
+const product = await item
 
-      console.log("Saved:", product)
+.locator("h3 a")
 
-      await sendDiscordAlert(product, price)
-    }
-  }
+.getAttribute("title")
 
-  await browser.close()
+const priceText = await item
+
+.locator(".price_color")
+
+.first()
+
+.textContent()
+
+const price = Number(
+
+priceText.replace("£","")
+
+)
+
+const { error } = await supabase
+
+.from("Deals")
+
+.insert({
+
+Name:product,
+
+Store:"BooksToScrape",
+
+Location:"Website",
+
+ZipCode:"00000",
+
+Old_Price:100,
+
+New_Price:price
+
+})
+
+if(!error){
+
+await fetch(
+
+process.env.DISCORD_WEBHOOK_URL,
+
+{
+
+method:"POST",
+
+headers:{
+
+"Content-Type":"application/json"
+
+},
+
+body:JSON.stringify({
+
+content:
+
+`🔥 NEW DEAL FOUND:
+
+${product}
+
+Price: £${price}`
+
+})
+
+}
+
+)
+
+}
+
+}
+
+await browser.close()
+
 }
 
 run()
