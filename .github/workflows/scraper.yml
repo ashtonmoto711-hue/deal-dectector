@@ -19,6 +19,8 @@ jobs:
 
       - run: npm install
 
+      - run: npx playwright install chromium
+
       - run: node scripts/test-scraper.js
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
