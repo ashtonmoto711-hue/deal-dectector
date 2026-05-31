@@ -1,35 +1,26 @@
 name: Auto Scraper
 
 on:
-
   schedule:
     - cron: "*/30 * * * *"
 
   workflow_dispatch:
 
 jobs:
-
   scrape:
-
     runs-on: ubuntu-latest
 
     steps:
-
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
-
         with:
-          node-version: 20
+          node-version: 22
 
       - run: npm install
 
       - run: node scripts/test-scraper.js
-
         env:
-
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK }}
